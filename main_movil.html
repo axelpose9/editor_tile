@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de Tiles – Interfaz Mobile Friendly</title>
+
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      background: #ddd;
+    }
+    .taskbar {
+      display: flex;
+      gap: 5px;
+      padding: 5px;
+      background: #bbb;
+      border-bottom: 1px solid #999;
+      position: relative;
+    }
+    .taskbar button {
+      padding: 5px 10px;
+      background: #eee;
+      border: 1px solid #aaa;
+      cursor: pointer;
+    }
+    .dropdown {
+      display: none;
+      position: absolute;
+      background: #ddd;
+      border: 1px solid #aaa;
+      padding: 5px;
+      z-index: 10;
+    }
+    .dropdown button {
+      display: block;
+      width: 100%;
+      background: #eee;
+      border: none;
+      padding: 5px;
+      cursor: pointer;
+    }
+    .dropdown button:hover {
+      background: #ccc;
+    }
+    .main-container {
+      display: flex;
+      flex-direction: row;
+      padding: 10px;
+    }
+    .sidebar {
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      background: #eee;
+    }
+    .tools {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #formasDropdown {
+      display: none;
+    }
+    #formasDropdown select {
+      padding: 5px;
+      font-size: 14px;
+      width: 100%;
+    }
+    .canvas-container {
+      position: relative;
+      background: white;
+      border: 1px solid black;
+      transform-origin: 0 0;
+    }
+    #tilesheet-container {
+      position: relative;
+      overflow: auto;
+      border: 1px solid black;
+      background: white;
+      width: 200px;
+      height: 200px;
+    }
+    #tilesheet {
+      cursor: pointer;
+      image-rendering: pixelated;
+    }
+    .selection-box {
+      position: absolute;
+      border: 1px dashed red;
+      pointer-events: none;
+      display: none;
+    }
+    .grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    @media (max-width: 00px) {
+      .main-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 5px;
+        padding: 5px;
+      }
+      .tools {
+        flex-direction: row;
+      }
+      button {
+        font-size: 16px;
+        padding: 10px;
+        margin: 2px;
+      }
+      .canvas-container {
+        width: 100%;
+        margin-top: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra de tareas -->
+  <div class="taskbar">
+    <button id="fileMenu">Archivo</button>
+    <div class="dropdown" id="fileDropdown">
+      <button id="loadButton">Cargar hoja de tejas</button>
+	  <button id="exportButton">Exportar mapa</button>
+    </div>
+    <button id="editMenu">Editar</button>
+    <button id="mapMenu">Mapa</button>
+    <button id="viewMenu">Ver</button>
+  </div>
+
+  <div class="main-container">
+    <div class="sidebar">
+      <label><input type="checkbox" id="toggleGrid"> Grilla</label>
+      <div id="tools" class="tools">
+        <button id="brushTool">Pincel</button>
+        <button id="eraserTool">Goma</button>
+        <button id="fillTool">Relleno</button>
+        <button id="selectTool">Seleccionar</button>
+        <button id="formasButton">Formas</button>
+        <div id="formasDropdown">
+          <select id="shapeSelect">
+            <option value="rectangle" selected>Rectángulo</option>
+            <option value="circle">Círculo</option>
+            <option value="triangle">Triángulo</option>
+            <option value="free">Forma Libre</option>
+          </select>
+        </div>
+      </div>
+      <div id="tilesheet-container">
+        <canvas id="tilesheet"></canvas>
+        <div id="tilesheetSelection" class="selection-box"></div>
+      </div>
+      <label id="tileIdLabel">ID del tile seleccionado: </label>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="tileCanvas" width="500" height="500"></canvas>
+      <canvas id="gridCanvas" class="grid" width="500" height="500"></canvas>
+      <div id="canvasSelection" class="selection-box"></div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" style="display: none">
+
+  <script>
+    document.getElementById("fileMenu").addEventListener("click", function (event) {
+      let dropdown = document.getElementById("fileDropdown");
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      dropdown.style.left = event.target.offsetLeft + "px"; 
+      dropdown.style.top = event.target.offsetTop + event.target.offsetHeight + "px";
+    });
+
+    document.getElementById("loadFile").addEventListener("click", function () {
+      document.getElementById("fileInput").click();
+    });
+
+    document.getElementById("fileInput").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const img = new Image();
+          img.onload = function () {
+            const canvas = document.getElementById("tilesheet");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.addEventListener("click", function (event) {
+      let dropdown = document.getElementById("fileDropdown");
+      if (!event.target.closest(".taskbar") && dropdown.style.display === "block") {
+        dropdown.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const tilesheetCanvas = document.getElementById('tilesheet');
+  const tileIdLabel = document.getElementById('tileIdLabel');
+
+  tilesheetCanvas.addEventListener('click', function(event) {
+    const rect = tilesheetCanvas.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    // Obtener la posición del tile dentro de la tilesheet
+    const col = Math.floor(clickX / tileSize);
+    const row = Math.floor(clickY / tileSize);
+
+    // Calcular cuántas columnas hay en la tilesheet
+    const tilesheetCols = Math.floor(tilesheet.width / tileSize);
+
+    // Calcular el ID del tile
+    const selectedTileId = row * tilesheetCols + col + 1;
+
+    // Actualizar el label con el ID correcto
+    tileIdLabel.innerText = "ID del tile seleccionado: " + selectedTileId;
+  });
+});
+
+
+    // --------------------- CONFIGURACIÓN Y VARIABLES GLOBALES ---------------------
+    const tileSize = 16;
+    const tileCanvas = document.getElementById("tileCanvas");
+    const ctx = tileCanvas.getContext("2d");
+    const gridCanvas = document.getElementById("gridCanvas");
+    const gridCtx = gridCanvas.getContext("2d");
+    const tilesheetCanvas = document.getElementById("tilesheet");
+    const tilesheetCtx = tilesheetCanvas.getContext("2d");
+    const tilesheetSelection = document.getElementById("tilesheetSelection");
+    const canvasSelectionDiv = document.getElementById("canvasSelection");
+    const canvasContainer = document.getElementById("canvasContainer");
+    let tilesheet = new Image();
+
+    // Variable para almacenar puntos en forma libre (nueva)
+    let freePoints = [];
+
+    // --------------------- NUEVAS FUNCIONES PARA DIBUJAR FORMAS CON TILES ---------------------
+    // Función para comprobar si un punto está dentro de un triángulo
+    function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
+      const areaOrig = Math.abs((bx - ax) * (cy - ay) - (cx - ax) * (by - ay));
+      const area1 = Math.abs((ax - px) * (by - py) - (bx - px) * (ay - py));
+      const area2 = Math.abs((bx - px) * (cy - py) - (cx - px) * (by - py));
+      const area3 = Math.abs((cx - px) * (ay - py) - (ax - px) * (cy - py));
+      return (area1 + area2 + area3 <= areaOrig + 0.01);
+    }
+    // Rellena un círculo usando los tiles seleccionados
+    function circleFill(startCol, startRow, endCol, endRow) {
+      const sCol = Math.min(startCol, endCol);
+      const sRow = Math.min(startRow, endRow);
+      const eCol = Math.max(startCol, endCol);
+      const eRow = Math.max(startRow, endRow);
+      const centerX = (sCol + eCol + 1) / 2;
+      const centerY = (sRow + eRow + 1) / 2;
+      const radius = Math.min(eCol - sCol + 1, eRow - sRow + 1) / 2;
+      for (let r = sRow; r <= eRow; r++) {
+        for (let c = sCol; c <= eCol; c++) {
+          const tileCenterX = c + 0.5;
+          const tileCenterY = r + 0.5;
+          const dist = Math.sqrt((tileCenterX - centerX) ** 2 + (tileCenterY - centerY) ** 2);
+          if (dist <= radius) {
+            let offsetRow = ((r - sRow) % tsBlockRows + tsBlockRows) % tsBlockRows;
+            let offsetCol = ((c - sCol) % tsBlockCols + tsBlockCols) % tsBlockCols;
+            let patternIndex = offsetRow * tsBlockCols + offsetCol;
+            drawTileOnCanvas(c, r, selectedTiles[patternIndex]);
+          }
+        }
+      }
+    }
+    // Rellena un triángulo isósceles (apex en el centro superior y base en la parte inferior) usando los tiles seleccionados
+    function triangleFill(startCol, startRow, endCol, endRow) {
+      const sCol = Math.min(startCol, endCol);
+      const sRow = Math.min(startRow, endRow);
+      const eCol = Math.max(startCol, endCol);
+      const eRow = Math.max(startRow, endRow);
+      const ax = (sCol + eCol) / 2;
+      const ay = sRow;
+      const bx = sCol;
+      const by = eRow;
+      const cx = eCol;
+      const cy = eRow;
+      for (let r = sRow; r <= eRow; r++) {
+        for (let c = sCol; c <= eCol; c++){
+          const tileCenterX = c + 0.5;
+          const tileCenterY = r + 0.5;
+          if (pointInTriangle(tileCenterX, tileCenterY, ax, ay, bx, by, cx, cy)) {
+            let offsetRow = ((r - sRow) % tsBlockRows + tsBlockRows) % tsBlockRows;
+            let offsetCol = ((c - sCol) % tsBlockCols + tsBlockCols) % tsBlockCols;
+            let patternIndex = offsetRow * tsBlockCols + offsetCol;
+            drawTileOnCanvas(c, r, selectedTiles[patternIndex]);
+          }
+        }
+      }
+    }
+    // Dibuja una línea "tileada" entre dos puntos (para forma libre) usando Bresenham
+    function drawFreeLineTiles(p1, p2) {
+      let x0 = p1.col, y0 = p1.row;
+      let x1 = p2.col, y1 = p2.row;
+      let dx = Math.abs(x1 - x0);
+      let dy = Math.abs(y1 - y0);
+      let sx = (x0 < x1) ? 1 : -1;
+      let sy = (y0 < y1) ? 1 : -1;
+      let err = dx - dy;
+      while (true) {
+        drawTileOnCanvas(x0, y0, selectedTiles[0]); // Se usa el primer tile del patrón
+        if (x0 === x1 && y0 === y1) break;
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; x0 += sx; }
+        if (e2 < dx) { err += dx; y0 += sy; }
+      }
+    }
+    // --------------------- FIN NUEVAS FUNCIONES ---------------------
+
+    // Mapa de tiles en el canvas de dibujo
+    const canvasCols = Math.floor(tileCanvas.width / tileSize);
+    const canvasRows = Math.floor(tileCanvas.height / tileSize);
+    let tileMap = [];
+    for (let r = 0; r < canvasRows; r++) {
+      tileMap[r] = new Array(canvasCols).fill(null);
+    }
+
+    // Herramienta actual (por defecto, pincel)
+    let currentTool = "brush";
+    document.getElementById("brushTool").addEventListener("click", () => { currentTool = "brush"; });
+    document.getElementById("eraserTool").addEventListener("click", () => { currentTool = "eraser"; });
+    document.getElementById("fillTool").addEventListener("click", () => { currentTool = "fill"; });
+    document.getElementById("selectTool").addEventListener("click", () => { currentTool = "select"; });
+    // NUEVO: Se elimina el antiguo botón "Rectángulos" y se usa el menú desplegable
+    document.getElementById("shapeSelect").addEventListener("change", function() {
+      currentTool = this.value;
+      if (currentTool !== "free") freePoints = [];
+    });
+    // NUEVO: Manejador del botón "Formas" para mostrar/ocultar el menú desplegable y seleccionar el rectángulo por defecto
+    document.getElementById("formasButton").addEventListener("click", function() {
+      const dropdown = document.getElementById("formasDropdown");
+      if (dropdown.style.display === "none" || dropdown.style.display === "") {
+        dropdown.style.display = "block";
+        // Selecciona el rectángulo por defecto
+        document.getElementById("shapeSelect").value = "rectangle";
+        currentTool = "rectangle";
+        // Desactivar cualquier selección previa en el canvas
+        canvasSelectionActive = false;
+        canvasSelectionDiv.style.display = "none";
+      } else {
+        dropdown.style.display = "none";
+      }
+    });
+// ===================== EXPORTACIÓN DEL MAPA =====================
+document.getElementById("exportButton").addEventListener("click", function() {
+  // Convertimos el tileMap a un mapa de IDs basados en la posición en la tilesheet.
+  // Se asume que cada tile es un array [x, y] o un objeto {x, y} con las coordenadas en píxeles.
+  const processedTileMap = tileMap.map(row => row.map(tile => {
+    // Verificamos que el tile tenga datos válidos (puede ser array u objeto)
+    if (tile && ((Array.isArray(tile) && tile.length >= 2) || (typeof tile === "object" && tile.x !== undefined && tile.y !== undefined))) {
+      let tileX, tileY;
+      if (Array.isArray(tile)) {
+        tileX = tile[0];
+        tileY = tile[1];
+      } else {
+        tileX = tile.x;
+        tileY = tile.y;
+      }
+      // Obtenemos la columna y fila en la tilesheet, dividiendo las coordenadas por tileSize
+      const col = Math.floor(tileX / tileSize);
+      const rowSheet = Math.floor(tileY / tileSize);
+      // Calculamos la cantidad de columnas en la tilesheet
+      const tilesheetCols = Math.floor(tilesheet.width / tileSize);
+      // Asignamos el ID en orden row-major:
+      // Ejemplo: para (x:0,y:0): 0*tilesheetCols + 0 + 1 = 1; (x:1,y:0): 0*tilesheetCols + 1 + 1 = 2; etc.
+      const id = rowSheet * tilesheetCols + col + 1;
+      return id;
+    }
+    return null;  // Si el tile es 0, null o no tiene el formato esperado, se deja como null
+  }));
+
+  // Se arma un objeto con el estado actual del mapa
+  const exportData = {
+    tileSize: tileSize,
+    canvasCols: canvasCols,
+    canvasRows: canvasRows,
+    tileMap: processedTileMap
+  };
+
+  // Convertimos el objeto a JSON para exportarlo
+  const jsonData = JSON.stringify(exportData, null, 2);  // Formateado para legibilidad
+  const blob = new Blob([jsonData], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tilemap.json";  // Nombre del archivo exportado
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+// ===================== ZOOM (aplicado al contenedor del canvas) =====================
+let zoomFactor = 1;
+canvasContainer.addEventListener("wheel", function(e) {
+  e.preventDefault();
+  if (e.deltaY > 0) {
+    zoomFactor = Math.max(0.5, zoomFactor - 0.1);
+  } else {
+    zoomFactor = Math.min(3, zoomFactor + 0.1);
+  }
+  canvasContainer.style.transform = `scale(${zoomFactor})`;
+});
+
+// Función para obtener coordenadas efectivas (sin zoom)
+function getEffectiveCoords(e) {
+  const rect = tileCanvas.getBoundingClientRect();
+  let effectiveX = (e.clientX - rect.left) / zoomFactor;
+  let effectiveY = (e.clientY - rect.top) / zoomFactor;
+  let mouseCol = Math.floor(effectiveX / tileSize);
+  let mouseRow = Math.floor(effectiveY / tileSize);
+  return { effectiveX, effectiveY, mouseCol, mouseRow };
+}
+
+// Función similar para eventos táctiles
+function getTouchEffectiveCoords(e) {
+  const touch = e.touches[0];
+  const rect = tileCanvas.getBoundingClientRect();
+  let effectiveX = (touch.clientX - rect.left) / zoomFactor;
+  let effectiveY = (touch.clientY - rect.top) / zoomFactor;
+  let mouseCol = Math.floor(effectiveX / tileSize);
+  let mouseRow = Math.floor(effectiveY / tileSize);
+  return { effectiveX, effectiveY, mouseCol, mouseRow };
+}
+
+// ===================== CARGA DE LA HOJA DE TILES =====================
+document.getElementById("loadButton").addEventListener("click", function(){
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.addEventListener("change", function(event){
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        tilesheet.onload = function() {
+          // Ajustamos el canvas al tamaño de la tilesheet y dibujamos la imagen
+          tilesheetCanvas.width = tilesheet.width;
+          tilesheetCanvas.height = tilesheet.height;
+          tilesheetCtx.drawImage(tilesheet, 0, 0);
+        };
+        tilesheet.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  input.click();
+});
+
+
+    // --------------------- GRILLA ---------------------
+    function drawGrid() {
+      gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+      gridCtx.strokeStyle = "rgba(0,0,0,0.2)";
+      for (let x = 0; x < gridCanvas.width; x += tileSize) {
+         gridCtx.beginPath();
+         gridCtx.moveTo(x, 0);
+         gridCtx.lineTo(x, gridCanvas.height);
+         gridCtx.stroke();
+      }
+      for (let y = 0; y < gridCanvas.height; y += tileSize) {
+         gridCtx.beginPath();
+         gridCtx.moveTo(0, y);
+         gridCtx.lineTo(gridCanvas.width, y);
+         gridCtx.stroke();
+      }
+    }
+    document.getElementById("toggleGrid").addEventListener("change", function(){
+      if(this.checked) drawGrid();
+      else gridCtx.clearRect(0,0,gridCanvas.width, gridCanvas.height);
+    });
+
+    // --------------------- SELECCIÓN EN LA HOJA DE TILES ---------------------
+    let tsSelectionStart = {x: 0, y: 0};
+    let tsSelectionEnd = {x: 0, y: 0};
+    let tsDragging = false;
+    let selectedTiles = []; // Arreglo de objetos {x, y} en la hoja de tiles
+    let tsBlockCols = 0, tsBlockRows = 0;
+    let tsBlockStart = {x:0, y:0};
+    
+    tilesheetCanvas.addEventListener("mousedown", function(e){
+      const rect = tilesheetCanvas.getBoundingClientRect();
+      tsSelectionStart.x = Math.floor((e.clientX - rect.left) / tileSize) * tileSize;
+      tsSelectionStart.y = Math.floor((e.clientY - rect.top) / tileSize) * tileSize;
+      tsSelectionEnd = {...tsSelectionStart};
+      tsDragging = true;
+      updateTilesheetSelection();
+    });
+    tilesheetCanvas.addEventListener("mousemove", function(e){
+      if(!tsDragging) return;
+      const rect = tilesheetCanvas.getBoundingClientRect();
+      tsSelectionEnd.x = Math.floor((e.clientX - rect.left) / tileSize) * tileSize;
+      tsSelectionEnd.y = Math.floor((e.clientY - rect.top) / tileSize) * tileSize;
+      updateTilesheetSelection();
+    });
+    tilesheetCanvas.addEventListener("mouseup", function(){
+      tsDragging = false;
+      loadSelectedTiles();
+    });
+    function updateTilesheetSelection(){
+      const x = Math.min(tsSelectionStart.x, tsSelectionEnd.x);
+      const y = Math.min(tsSelectionStart.y, tsSelectionEnd.y);
+      const w = Math.abs(tsSelectionEnd.x - tsSelectionStart.x) + tileSize;
+      const h = Math.abs(tsSelectionEnd.y - tsSelectionStart.y) + tileSize;
+      tilesheetSelection.style.display = "block";
+      tilesheetSelection.style.left = `${x}px`;
+      tilesheetSelection.style.top = `${y}px`;
+      tilesheetSelection.style.width = `${w}px`;
+      tilesheetSelection.style.height = `${h}px`;
+    }
+    function loadSelectedTiles(){
+      const xStart = Math.min(tsSelectionStart.x, tsSelectionEnd.x);
+      const yStart = Math.min(tsSelectionStart.y, tsSelectionEnd.y);
+      const xEnd = Math.max(tsSelectionStart.x, tsSelectionEnd.x) + tileSize;
+      const yEnd = Math.max(tsSelectionStart.y, tsSelectionEnd.y) + tileSize;
+      tsBlockStart = {x: xStart, y: yStart};
+      tsBlockCols = (xEnd - xStart) / tileSize;
+      tsBlockRows = (yEnd - yStart) / tileSize;
+      selectedTiles = [];
+      for(let row = 0; row < tsBlockRows; row++){
+        for(let col = 0; col < tsBlockCols; col++){
+          selectedTiles.push({
+            x: xStart + col * tileSize,
+            y: yStart + row * tileSize
+          });
+        }
+      }
+    }
+    
+    // --------------------- TILEMAP Y DIBUJO EN CANVAS ---------------------
+    function drawTileOnCanvas(col, row, tileData) {
+      ctx.drawImage(tilesheet, tileData.x, tileData.y, tileSize, tileSize,
+                    col*tileSize, row*tileSize, tileSize, tileSize);
+      tileMap[row][col] = tileData;
+    }
+    function eraseTileOnCanvas(col, row) {
+      ctx.clearRect(col*tileSize, row*tileSize, tileSize, tileSize);
+      tileMap[row][col] = null;
+    }
+    
+    // Pincel: dibuja el bloque seleccionado en la celda base
+    function brushAtCell(baseCol, baseRow) {
+      if(selectedTiles.length === 0) return;
+      for(let r = 0; r < tsBlockRows; r++){
+        for(let c = 0; c < tsBlockCols; c++){
+          let tileIndex = r * tsBlockCols + c;
+          let targetCol = baseCol + c;
+          let targetRow = baseRow + r;
+          if(targetCol < canvasCols && targetRow < canvasRows){
+            drawTileOnCanvas(targetCol, targetRow, selectedTiles[tileIndex]);
+          }
+        }
+      }
+    }
+    // Goma: borra en bloque del mismo tamaño que la selección
+    function eraserAtCell(baseCol, baseRow) {
+      const blockCols = tsBlockCols || 1;
+      const blockRows = tsBlockRows || 1;
+      for(let r = 0; r < blockRows; r++){
+        for(let c = 0; c < blockCols; c++){
+          let targetCol = baseCol + c;
+          let targetRow = baseRow + r;
+          if(targetCol < canvasCols && targetRow < canvasRows){
+            eraseTileOnCanvas(targetCol, targetRow);
+          }
+        }
+      }
+    }
+    // Relleno (fill): flood fill en tileMap
+    function floodFill(startCol, startRow) {
+      if(selectedTiles.length === 0) return;
+      const blockCols = tsBlockCols || 1;
+      const blockRows = tsBlockRows || 1;
+      const target = tileMap[startRow][startCol];
+      let visited = [];
+      for(let r = 0; r < canvasRows; r++){
+        visited[r] = new Array(canvasCols).fill(false);
+      }
+      let queue = [];
+      queue.push({col: startCol, row: startRow});
+      while(queue.length > 0){
+        let {col, row} = queue.shift();
+        if(col < 0 || col >= canvasCols || row < 0 || row >= canvasRows) continue;
+        if(visited[row][col]) continue;
+        if(JSON.stringify(tileMap[row][col]) !== JSON.stringify(target)) continue;
+        let offsetRow = ((row - startRow) % blockRows + blockRows) % blockRows;
+        let offsetCol = ((col - startCol) % blockCols + blockCols) % blockCols;
+        let patternIndex = offsetRow * blockCols + offsetCol;
+        drawTileOnCanvas(col, row, selectedTiles[patternIndex]);
+        visited[row][col] = true;
+        queue.push({col: col+1, row: row});
+        queue.push({col: col-1, row: row});
+        queue.push({col: col, row: row+1});
+        queue.push({col: col, row: row-1});
+      }
+    }
+    
+    // Rectángulo: dibuja un rectángulo lleno con el patrón seleccionado
+    function rectangleFill(startCol, startRow, endCol, endRow) {
+      const sCol = Math.min(startCol, endCol);
+      const sRow = Math.min(startRow, endRow);
+      const eCol = Math.max(startCol, endCol);
+      const eRow = Math.max(startRow, endRow);
+      for(let r = sRow; r <= eRow; r++){
+        for(let c = sCol; c <= eCol; c++){
+          let offsetRow = ((r - sRow) % tsBlockRows + tsBlockRows) % tsBlockRows;
+          let offsetCol = ((c - sCol) % tsBlockCols + tsBlockCols) % tsBlockCols;
+          let patternIndex = offsetRow * tsBlockCols + offsetCol;
+          drawTileOnCanvas(c, r, selectedTiles[patternIndex]);
+        }
+      }
+    }
+    
+    // --------------------- NUEVAS FUNCIONES DE DIBUJO PARA FORMAS ---------------------
+    // Dibuja una línea "tileada" entre dos puntos (para forma libre) usando Bresenham
+    function drawFreeLineTiles(p1, p2) {
+      let x0 = p1.col, y0 = p1.row;
+      let x1 = p2.col, y1 = p2.row;
+      let dx = Math.abs(x1 - x0);
+      let dy = Math.abs(y1 - y0);
+      let sx = (x0 < x1) ? 1 : -1;
+      let sy = (y0 < y1) ? 1 : -1;
+      let err = dx - dy;
+      while (true) {
+        drawTileOnCanvas(x0, y0, selectedTiles[0]);
+        if (x0 === x1 && y0 === y1) break;
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; x0 += sx; }
+        if (e2 < dx) { err += dx; y0 += sy; }
+      }
+    }
+    // --------------------- FIN NUEVAS FUNCIONES ---------------------
+
+    // --------------------- SELECCIÓN EN CANVAS (MANIPULABLE) ---------------------
+    let canvasSelectionActive = false;
+    let canvasSelectionStart = {col: 0, row: 0};
+    let canvasSelectionEnd = {col: 0, row: 0};
+    function updateCanvasSelectionBox() {
+      const x = Math.min(canvasSelectionStart.col, canvasSelectionEnd.col) * tileSize;
+      const y = Math.min(canvasSelectionStart.row, canvasSelectionEnd.row) * tileSize;
+      const w = (Math.abs(canvasSelectionEnd.col - canvasSelectionStart.col) + 1) * tileSize;
+      const h = (Math.abs(canvasSelectionEnd.row - canvasSelectionStart.row) + 1) * tileSize;
+      canvasSelectionDiv.style.display = "block";
+      canvasSelectionDiv.style.left = `${x}px`;
+      canvasSelectionDiv.style.top = `${y}px`;
+      canvasSelectionDiv.style.width = `${w}px`;
+      canvasSelectionDiv.style.height = `${h}px`;
+    }
+    // Variables para mover la selección
+    let selectionBoxDragging = false;
+    let selectionBoxDragOffset = {col: 0, row: 0};
+    let originalSelection = {start: {col: 0, row: 0}, end: {col: 0, row: 0}};
+    
+    // --------------------- EVENTOS EN EL CANVAS DE DIBUJO ---------------------
+    let isDrawingOnCanvas = false;
+    let canvasDragging = false;
+    // Soporte para mouse y touch en el canvas de dibujo:
+    function handleCanvasDown(e) {
+      // Prevenir el comportamiento por defecto en touch
+      e.preventDefault();
+      const coords = e.touches ? getTouchEffectiveCoords(e) : getEffectiveCoords(e);
+      let mouseCol = coords.mouseCol;
+      let mouseRow = coords.mouseRow;
+      
+      if (currentTool === "brush") {
+        isDrawingOnCanvas = true;
+        brushAtCell(mouseCol, mouseRow);
+      } else if (currentTool === "eraser") {
+        isDrawingOnCanvas = true;
+        eraserAtCell(mouseCol, mouseRow);
+      } else if (currentTool === "fill") {
+        floodFill(mouseCol, mouseRow);
+      } else if (currentTool === "select") {
+        if (canvasSelectionActive) {
+          const selStartCol = Math.min(canvasSelectionStart.col, canvasSelectionEnd.col);
+          const selEndCol = Math.max(canvasSelectionStart.col, canvasSelectionEnd.col);
+          const selStartRow = Math.min(canvasSelectionStart.row, canvasSelectionEnd.row);
+          const selEndRow = Math.max(canvasSelectionStart.row, canvasSelectionEnd.row);
+          if (mouseCol >= selStartCol && mouseCol <= selEndCol &&
+              mouseRow >= selStartRow && mouseRow <= selEndRow) {
+            selectionBoxDragging = true;
+            selectionBoxDragOffset.col = mouseCol - selStartCol;
+            selectionBoxDragOffset.row = mouseRow - selStartRow;
+            originalSelection.start = { ...canvasSelectionStart };
+            originalSelection.end = { ...canvasSelectionEnd };
+            return;
+          } else {
+            canvasSelectionActive = false;
+            canvasSelectionDiv.style.display = "none";
+            return;
+          }
+        }
+        canvasDragging = true;
+        canvasSelectionActive = true;
+        canvasSelectionStart = {col: mouseCol, row: mouseRow};
+        canvasSelectionEnd = {col: mouseCol, row: mouseRow};
+        updateCanvasSelectionBox();
+      }
+      // --------------------- NUEVAS OPCIONES DEL MENÚ DE FORMAS ---------------------
+      else if (currentTool === "rectangle") {
+        canvasDragging = true;
+        canvasSelectionActive = true;
+        canvasSelectionStart = {col: mouseCol, row: mouseRow};
+        canvasSelectionEnd = {col: mouseCol, row: mouseRow};
+        updateCanvasSelectionBox();
+      } else if (currentTool === "circle") {
+        canvasDragging = true;
+        canvasSelectionActive = true;
+        canvasSelectionStart = {col: mouseCol, row: mouseRow};
+        canvasSelectionEnd = {col: mouseCol, row: mouseRow};
+        updateCanvasSelectionBox();
+      } else if (currentTool === "triangle") {
+        canvasDragging = true;
+        canvasSelectionActive = true;
+        canvasSelectionStart = {col: mouseCol, row: mouseRow};
+        canvasSelectionEnd = {col: mouseCol, row: mouseRow};
+        updateCanvasSelectionBox();
+      } else if (currentTool === "free") {
+        freePoints.push({col: mouseCol, row: mouseRow});
+        if (freePoints.length > 1) {
+          drawFreeLineTiles(freePoints[freePoints.length - 2], freePoints[freePoints.length - 1]);
+        }
+      }
+    }
+    function handleCanvasMove(e) {
+      e.preventDefault();
+      const coords = e.touches ? getTouchEffectiveCoords(e) : getEffectiveCoords(e);
+      let mouseCol = coords.mouseCol;
+      let mouseRow = coords.mouseRow;
+      if (currentTool === "brush" && isDrawingOnCanvas) {
+        brushAtCell(mouseCol, mouseRow);
+      } else if (currentTool === "eraser" && isDrawingOnCanvas) {
+        eraserAtCell(mouseCol, mouseRow);
+      } else if ((currentTool === "select" || currentTool === "rectangle" ||
+                  currentTool === "circle" || currentTool === "triangle") && canvasDragging) {
+        canvasSelectionEnd = {col: mouseCol, row: mouseRow};
+        updateCanvasSelectionBox();
+      } else if (currentTool === "select" && selectionBoxDragging) {
+        let newStartCol = mouseCol - selectionBoxDragOffset.col;
+        let newStartRow = mouseRow - selectionBoxDragOffset.row;
+        let width = Math.abs(canvasSelectionEnd.col - canvasSelectionStart.col);
+        let height = Math.abs(canvasSelectionEnd.row - canvasSelectionStart.row);
+        canvasSelectionStart = {col: newStartCol, row: newStartRow};
+        canvasSelectionEnd = {col: newStartCol + width, row: newStartRow + height};
+        updateCanvasSelectionBox();
+      }
+    }
+    function handleCanvasUp(e) {
+      const coords = e.changedTouches ? getTouchEffectiveCoords(e) : getEffectiveCoords(e);
+      let mouseCol = coords.mouseCol;
+      let mouseRow = coords.mouseRow;
+      if (currentTool === "brush" || currentTool === "eraser") {
+        isDrawingOnCanvas = false;
+      } else if (currentTool === "select") {
+        if (selectionBoxDragging) {
+          const selStartCol = Math.min(originalSelection.start.col, originalSelection.end.col);
+          const selStartRow = Math.min(originalSelection.start.row, originalSelection.end.row);
+          const deltaCol = canvasSelectionStart.col - selStartCol;
+          const deltaRow = canvasSelectionStart.row - selStartRow;
+          let copied = [];
+          for (let r = selStartRow; r <= Math.max(originalSelection.start.row, originalSelection.end.row); r++) {
+            let rowData = [];
+            for (let c = selStartCol; c <= Math.max(originalSelection.start.col, originalSelection.end.col); c++){
+              rowData.push(tileMap[r][c]);
+              eraseTileOnCanvas(c, r);
+            }
+            copied.push(rowData);
+          }
+          for (let r = 0; r < copied.length; r++){
+            for (let c = 0; c < copied[r].length; c++){
+              let targetCol = selStartCol + c + deltaCol;
+              let targetRow = selStartRow + r + deltaRow;
+              if (targetCol < canvasCols && targetRow < canvasRows) {
+                if (copied[r][c] !== null) {
+                  drawTileOnCanvas(targetCol, targetRow, copied[r][c]);
+                }
+              }
+            }
+          }
+          selectionBoxDragging = false;
+        }
+        canvasDragging = false;
+      }
+      // --------------------- FINALIZACIÓN DE DIBUJO DE FORMAS ---------------------
+      else if (currentTool === "rectangle") {
+        canvasDragging = false;
+        const startCol = Math.min(canvasSelectionStart.col, canvasSelectionEnd.col);
+        const startRow = Math.min(canvasSelectionStart.row, canvasSelectionEnd.row);
+        const endCol = Math.max(canvasSelectionStart.col, canvasSelectionEnd.col);
+        const endRow = Math.max(canvasSelectionStart.row, canvasSelectionEnd.row);
+        rectangleFill(startCol, startRow, endCol, endRow);
+        canvasSelectionDiv.style.display = "none";
+      } else if (currentTool === "circle") {
+        canvasDragging = false;
+        circleFill(canvasSelectionStart.col, canvasSelectionStart.row, canvasSelectionEnd.col, canvasSelectionEnd.row);
+        canvasSelectionDiv.style.display = "none";
+      } else if (currentTool === "triangle") {
+        canvasDragging = false;
+        triangleFill(canvasSelectionStart.col, canvasSelectionStart.row, canvasSelectionEnd.col, canvasSelectionEnd.row);
+        canvasSelectionDiv.style.display = "none";
+      }
+    }
+    // Agregar listeners para mouse
+    tileCanvas.addEventListener("mousedown", handleCanvasDown);
+    tileCanvas.addEventListener("mousemove", handleCanvasMove);
+    tileCanvas.addEventListener("mouseup", handleCanvasUp);
+    tileCanvas.addEventListener("mouseleave", function(){
+      if(currentTool === "brush" || currentTool === "eraser"){
+        isDrawingOnCanvas = false;
+      }
+      canvasDragging = false;
+      selectionBoxDragging = false;
+    });
+    // Agregar listeners para touch
+    tileCanvas.addEventListener("touchstart", handleCanvasDown);
+    tileCanvas.addEventListener("touchmove", handleCanvasMove);
+    tileCanvas.addEventListener("touchend", handleCanvasUp);
+
+    // --------------------- TECLADO: Eliminar selección con Supr ---------------------
+    window.addEventListener("keydown", function(e){
+      if(e.key === "Delete" || e.key === "Supr"){
+        if(currentTool === "select" && canvasSelectionActive){
+          const selStartCol = Math.min(canvasSelectionStart.col, canvasSelectionEnd.col);
+          const selEndCol = Math.max(canvasSelectionStart.col, canvasSelectionEnd.col);
+          const selStartRow = Math.min(canvasSelectionStart.row, canvasSelectionEnd.row);
+          const selEndRow = Math.max(canvasSelectionStart.row, canvasSelectionEnd.row);
+          for(let r = selStartRow; r <= selEndRow; r++){
+            for(let c = selStartCol; c <= selEndCol; c++){
+              eraseTileOnCanvas(c, r);
+            }
+          }
+          canvasSelectionDiv.style.display = "none";
+          canvasSelectionActive = false;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

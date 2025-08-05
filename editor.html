@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editor de Tiles</title>
+    
+    <link rel="stylesheet" href="./style.css" />
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+
+	<header>
+		<h1>Editor de Tiles</h1>
+		<button id="openMenu" aria-label="Abrir menú">☰</button>
+	</header>
+
+	<div id="workspace">
+		<canvas id="canvas"></canvas>
+	</div>
+
+	<div class="tools">	
+		<button id="pencilTool">✏️ Lápiz</button>
+		<button id="selectTool">🖱️ Selección</button>	
+		<button id="eraserTool">🧽 Borrador</button>
+		<button id="fillTool">🪣 Relleno</button>
+
+		<div class="dropdown">
+			<button id="shapeTool">🔲 Formas ▼</button>
+			<div id="shapeMenu" class="dropdown-content">
+			    <button class="shape-option" id="rectangleTool" data-shape="rectangle">Rectángulo</button>
+			    <button class="shape-option" id="circleTool" data-shape="circle">Círculo</button>
+			    <button class="shape-option" id="lineTool" data-shape="line">Línea</button>
+			</div>
+		</div>
+
+		<button id="toggleGrid">📐 Grilla</button>
+	</div>
+
+	<div id="tileBox" class="collapsed">
+		<div class="icon">🎨</div>
+	</div>
+
+	<div id="overlay" class="hidden"></div>
+
+	<nav id="menuDrawer" class="drawer hidden">
+		<ul>
+			<li><button id="newProject">Nuevo Proyecto</button></li>
+			<li><button id="cargarTiled">Cargar Hoja de Tiled</button></li>
+			<li><button id="saveProject">Guardar Proyecto</button></li>
+			<li><button id="loadProject">Cargar Proyecto</button></li>
+			<li><button id="exportButton">Exportar Mapa</button></li>
+			<li><button id="settings">Configuración</button></li>
+		</ul>
+	</nav>
+
+	<input type="file" id="tileInput" accept="image/*" class="hidden" />
+
+	<script type="module" src="./scripts/main.js" defer></script>
+</body>
+</html>

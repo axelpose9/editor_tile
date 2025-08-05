@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arrastrar Cuadro y Botón</title>
+  <style>
+    #canvas {
+      border: 1px solid black;
+      position: relative;
+      width: 500px;
+      height: 500px;
+    }
+    .scale-button {
+      width: 32px;
+      height: 32px;
+      position: absolute;
+      cursor: se-resize;
+      background-color: transparent;
+      border: 1px solid red;
+      background-image: url("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Resize_icon.svg/1200px-Resize_icon.svg.png");
+      background-size: cover;
+      background-position: center;
+      visibility: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      let scaleButton = null;
+      let isDragging = false;
+      let offsetX, offsetY;
+
+      const selection = {
+        width: 200,
+        height: 150
+      };
+
+      // Función para centrar el cuadro
+      function centerSelection() {
+        selection.x = (canvas.width - selection.width) / 2;
+        selection.y = (canvas.height - selection.height) / 2;
+      }
+
+      // Función para dibujar el cuadro y el botón
+      function drawSelection() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar el canvas
+
+        // Dibujar el cuadro
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(selection.x, selection.y, selection.width, selection.height);
+
+        // Dibujar el botón de escalado
+        if (!scaleButton) {
+          scaleButton = document.createElement('div');
+          scaleButton.classList.add('scale-button');
+          document.body.appendChild(scaleButton);
+        }
+
+        // Posicionar el botón en la esquina inferior derecha del cuadro
+        scaleButton.style.left = `${selection.x + selection.width - 16}px`;
+        scaleButton.style.top = `${selection.y + selection.height - 16}px`;
+        scaleButton.style.visibility = 'visible'; // Hacer visible el botón
+      }
+
+      // Función que se ejecuta cuando el botón es tocado
+      function onScaleButtonTouch(e) {
+        e.preventDefault(); // Prevenir comportamiento por defecto del toque
+        console.log("¡Botón tocado!"); // Confirmación de toque
+
+        // Iniciar el arrastre
+        isDragging = true;
+        offsetX = e.touches ? e.touches[0].clientX - scaleButton.getBoundingClientRect().left : e.clientX - scaleButton.getBoundingClientRect().left;
+        offsetY = e.touches ? e.touches[0].clientY - scaleButton.getBoundingClientRect().top : e.clientY - scaleButton.getBoundingClientRect().top;
+      }
+
+      // Función para mover el botón mientras se arrastra
+      function moveScaleButton(e) {
+        if (!isDragging) return;
+
+        const mousePos = e.touches ? e.touches[0] : e;  // Obtener posición del toque o del mouse
+        const newX = mousePos.clientX - offsetX;
+        const newY = mousePos.clientY - offsetY;
+
+        // Actualizar las posiciones del botón y el cuadro de selección
+        scaleButton.style.left = `${newX}px`;
+        scaleButton.style.top = `${newY}px`;
+
+        // Actualizar el cuadro de selección
+        selection.width = newX - selection.x + 16;  // 16 es el tamaño del botón
+        selection.height = newY - selection.y + 16; // 16 es el tamaño del botón
+
+        drawSelection();  // Redibujar el cuadro con la nueva posición y tamaño
+      }
+
+      // Función para finalizar el arrastre
+      function endScaling() {
+        if (isDragging) {
+          isDragging = false;
+        }
+      }
+
+      // Crear el botón y asignar eventos
+      function setupScaleButton() {
+        if (!scaleButton) {
+          scaleButton = document.createElement('div');
+          scaleButton.classList.add('scale-button');
+          document.body.appendChild(scaleButton);
+
+          // Asignar los eventos al botón de escalado
+          scaleButton.addEventListener('touchstart', onScaleButtonTouch, { passive: false });
+          scaleButton.addEventListener('mousedown', onScaleButtonTouch);
+        }
+      }
+
+      // Agregar eventos de movimiento y finalización
+      document.body.addEventListener('touchmove', moveScaleButton, { passive: false });
+      document.body.addEventListener('mousemove', moveScaleButton);
+
+      document.body.addEventListener('touchend', endScaling);
+      document.body.addEventListener('mouseup', endScaling);
+
+      // Inicializar el dibujo y los eventos
+      setupScaleButton();
+      centerSelection();
+      drawSelection();
+    });
+  </script>
+
+</body>
+</html>

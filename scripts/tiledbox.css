@@ -1,0 +1,103 @@
+#tileBox {
+  position: fixed;
+  bottom: 8rem;
+  right: 1rem;
+  width: 64px;
+  height: 64px;
+  background-color: #1e3a8a;
+  border-radius: 0.25rem;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 15;
+  transition: all 0.2s ease;
+}
+
+#tileBox.expanded {
+  width: 250px;
+  height: 250px;
+  overflow: auto;
+  cursor: grab;
+}
+
+#tileBox canvas {
+  display: block;
+  width: 100% !important;     /* Llena el ancho del contenedor */
+  height: 100% !important;    /* Llena el alto del contenedor */
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+
+
+#tileBox canvas:active {
+  cursor: grabbing;
+}
+
+.zoom-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+  opacity: 0; /* Para que sean invisibles por defecto */
+  transition: opacity 0.3s;
+}
+
+.zoom-controls.visible {
+  opacity: 1;
+}
+
+.zoom-btn {
+  background: rgba(0,0,0,0.6);
+  border: none;
+  color: white;
+  font-size: 28px;  /* Más grande para celular */
+  width: 48px;      /* Más área táctil */
+  height: 48px;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.zoom-btn:active {
+  background: rgba(0,0,0,0.8);
+}
+#tileBox.expanded .zoom-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* ---------------------------------- */
+/* Media Query para Móviles      */
+/* ---------------------------------- */
+
+@media (max-width: 768px) {
+  #tileBox {
+    /* Ajusta el tamaño y la posición para móviles */
+    bottom: 10.5rem;
+    right: 3rem;
+    width: 56px;
+    height: 56px;
+  }
+  
+  #tileBox.expanded {
+    /* El tamaño expandido se ajusta para no desbordar la pantalla */
+    width: 90vw; /* 90% del ancho del viewport */
+    height: 90vh; /* 90% del alto del viewport */
+    top: 5vh;    /* Centra verticalmente */
+    left: 5vw;   /* Centra horizontalmente */
+    bottom: auto; /* Desactiva la posición inferior */
+    right: auto;  /* Desactiva la posición derecha */
+  }
+
+  .zoom-btn {
+    /* Botones más grandes para facilitar el toque */
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+    border-radius: 6px;
+  }
+}

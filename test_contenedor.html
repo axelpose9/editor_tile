@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Explorer</title>
+    <!-- Tailwind CSS para un diseño limpio y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font 'Inter' -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #e6edf3;
+        }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 1rem;
+        }
+        #gameCanvas {
+            background-color: #000000;
+            border: 2px solid #238636;
+            box-shadow: 0 0 15px #238636;
+            border-radius: 1rem;
+            max-width: 95vw;
+            max-height: 80vh;
+            display: block;
+            touch-action: none; /* Evita gestos de zoom del navegador */
+        }
+        .controls {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .message-box {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: left;
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+    <div class="main-container">
+        <h1 class="text-4xl font-bold mb-4 text-[#238636] drop-shadow-md">Star Explorer</h1>
+        <div class="message-box">
+            <p><strong>Controles:</strong></p>
+            <ul class="list-disc list-inside mt-2">
+                <li>Usa la **rueda del mouse** para hacer zoom y alejarte.</li>
+                <li>**Haz clic y arrastra** con el mouse para moverte por el espacio.</li>
+            </ul>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        // Clase para manejar las transformaciones del mundo y los eventos de interacción.
+        class WorldController {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.isPanning = false;
+                this.lastX = null;
+                this.lastY = null;
+                
+                // Propiedades de Pan y Zoom
+                this.scale = 1.0;
+                // Posición inicial del paneo, centrada en el canvas
+                this.panX = 0;
+                this.panY = 0;
+                this.minScale = 0.1;
+                this.maxScale = 5.0;
+                this.zoomSensitivity = 0.0005;
+
+                // Generar un mundo con estrellas y planetas aleatorios
+                this.stars = this.generateStars(500);
+                this.planet = this.generatePlanet();
+
+                this.setupEvents();
+            }
+
+            // Genera estrellas en posiciones aleatorias
+            generateStars(count) {
+                const stars = [];
+                for (let i = 0; i < count; i++) {
+                    stars.push({
+                        x: (Math.random() - 0.5) * 5000,
+                        y: (Math.random() - 0.5) * 5000,
+                        size: Math.random() * 2,
+                        alpha: Math.random()
+                    });
+                }
+                return stars;
+            }
+
+            // Genera un planeta aleatorio
+            generatePlanet() {
+                return {
+                    x: (Math.random() - 0.5) * 2000,
+                    y: (Math.random() - 0.5) * 2000,
+                    radius: 200 + Math.random() * 150,
+                    color: `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`
+                };
+            }
+
+            // Configura los escuchadores de eventos
+            setupEvents() {
+                this.canvas.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                window.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                window.addEventListener('mousemove', this.handleMouseMove.bind(this));
+            }
+
+            /**
+             * Maneja el evento de la rueda del mouse para el zoom. (Código corregido)
+             * @param {WheelEvent} e El evento de la rueda del mouse.
+             */
+            handleWheel(e) {
+                e.preventDefault();
+                
+                const oldScale = this.scale;
+                
+                // 1. Obtiene la posición del cursor en relación con el lienzo
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // 2. Calcula las coordenadas del mundo bajo el cursor antes del zoom
+                const worldX = (mouseX - this.panX) / oldScale;
+                const worldY = (mouseY - this.panY) / oldScale;
+
+                // 3. Aplica la nueva escala
+                const zoomFactor = 1 + e.deltaY * -this.zoomSensitivity;
+                const newScale = oldScale * zoomFactor;
+                this.scale = Math.max(this.minScale, Math.min(newScale, this.maxScale));
+
+                // 4. Ajusta el paneo para que el punto del mundo siga bajo el cursor
+                this.panX = mouseX - worldX * this.scale;
+                this.panY = mouseY - worldY * this.scale;
+
+                this.redraw();
+            }
+
+            handleMouseDown(e) {
+                if (e.button === 0) { // Clic izquierdo para arrastrar
+                    e.preventDefault();
+                    this.isPanning = true;
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                    this.canvas.style.cursor = 'grabbing';
+                }
+            }
+
+            handleMouseUp(e) {
+                this.isPanning = false;
+                this.canvas.style.cursor = 'grab';
+            }
+
+            handleMouseMove(e) {
+                if (this.isPanning) {
+                    const dx = e.clientX - this.lastX;
+                    const dy = e.clientY - this.lastY;
+                    this.panX += dx;
+                    this.panY += dy;
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                    this.redraw();
+                }
+            }
+
+            // Dibuja la escena completa
+            redraw() {
+                this.ctx.save();
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Resetea la transformación
+
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Aplica las transformaciones de pan y zoom directamente
+                this.ctx.translate(this.panX, this.panY);
+                this.ctx.scale(this.scale, this.scale);
+                
+                // Dibuja el planeta en sus coordenadas del "mundo"
+                this.ctx.fillStyle = this.planet.color;
+                this.ctx.beginPath();
+                this.ctx.arc(this.planet.x, this.planet.y, this.planet.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Dibuja las estrellas en sus coordenadas del "mundo"
+                this.ctx.fillStyle = "#fff";
+                this.stars.forEach(star => {
+                    this.ctx.globalAlpha = star.alpha;
+                    this.ctx.beginPath();
+                    this.ctx.arc(star.x, star.y, star.size / this.scale, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                
+                this.ctx.restore();
+            }
+        }
+        
+        // --- GameController (Bucle principal del juego) ---
+        class GameController {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.world = new WorldController(canvas);
+                this.animate = this.animate.bind(this);
+            }
+
+            // Inicia el bucle del juego
+            start() {
+                this.canvas.width = window.innerWidth * 0.95;
+                this.canvas.height = window.innerHeight * 0.8;
+                // Pan inicial para centrar el contenido
+                this.world.panX = this.canvas.width / 2;
+                this.world.panY = this.canvas.height / 2;
+                this.world.redraw();
+                this.animate();
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth * 0.95;
+                    this.canvas.height = window.innerHeight * 0.8;
+                    this.world.panX = this.canvas.width / 2;
+                    this.world.panY = this.canvas.height / 2;
+                    this.world.redraw();
+                });
+            }
+
+            // Bucle principal de animación
+            animate() {
+                this.world.redraw();
+                requestAnimationFrame(this.animate);
+            }
+        }
+
+        // El juego ahora se inicia de inmediato
+        const canvas = document.getElementById('gameCanvas');
+        const game = new GameController(canvas);
+        game.start();
+    </script>
+</body>
+</html>

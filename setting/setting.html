@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Editor de Lienzo</title>
+	<style>
+		/*
+		 * Hoja de estilos optimizada para dispositivos móviles.
+		 * El diseño es ahora más cómodo y legible en pantallas pequeñas.
+		 */
+
+		/* Base general */
+		body {
+			background-color: #111827;
+			color: #f9fafb;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			-webkit-font-smoothing: antialiased;
+		}
+
+		/* Contenedor principal */
+		.container {
+			padding: 1.5rem;
+			max-width: 500px;
+			margin: 1rem; /* Margen ajustado para móviles */
+			background-color: #1f2937;
+			border-radius: 0.75rem;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+		}
+
+		/* Título */
+		h1 {
+			margin-top: 0;
+			margin-bottom: 1.5rem;
+			text-align: center;
+			font-size: 1.75rem; /* Tamaño de fuente más grande para mejor legibilidad */
+			font-weight: 600;
+		}
+
+		/* Grupos de formulario */
+		.form-group {
+			margin-bottom: 1.25rem;
+			display: flex;
+			flex-direction: column;
+		}
+
+		/* Etiquetas e inputs */
+		label {
+			margin-bottom: 0.5rem;
+			font-weight: 500;
+			color: #e5e7eb;
+			font-size: 1rem; /* Tamaño de etiqueta más legible */
+		}
+
+		.input {
+			background-color: #111827;
+			border: 1px solid #374151;
+			border-radius: 0.5rem;
+			padding: 0.75rem 1rem;
+			color: white;
+			outline: none;
+			transition: border-color 0.2s ease, box-shadow 0.2s ease;
+			font-size: 1rem; /* Tamaño de fuente consistente para inputs */
+		}
+
+		.input:focus {
+			border-color: #06b6d4;
+			box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.4);
+		}
+		
+		/* Resultados */
+		.result {
+			margin-top: 1.5rem;
+			background-color: #374151;
+			padding: 1rem;
+			border-radius: 0.5rem;
+			color: #d1d5db;
+			font-size: 1rem; /* Tamaño de fuente más grande para el resultado */
+		}
+
+		/* Botones del contenedor principal */
+		.buttons {
+			display: flex;
+			flex-direction: column; /* Apila los botones en columnas para móviles */
+			gap: 0.75rem;
+			margin-top: 2rem;
+		}
+
+		.button {
+			font-weight: 600;
+			padding: 1rem 1.5rem; /* Aumenta el padding para un área de clic más grande */
+			border-radius: 0.5rem;
+			cursor: pointer;
+			transition: background-color 0.3s ease, transform 0.2s ease;
+			border: none;
+			flex-grow: 1;
+			font-size: 1rem;
+		}
+
+		.button:active {
+			transform: scale(0.98);
+		}
+
+		.button.primary {
+			background-color: #06b6d4;
+			color: white;
+		}
+
+		.button.primary:hover {
+			background-color: #0891b2;
+		}
+
+		.button.secondary {
+			background-color: #374151;
+			color: white;
+		}
+
+		.button.secondary:hover {
+			background-color: #4b5563;
+		}
+
+		/* Estilos para los selectores de color */
+		.color-selector {
+			display: flex;
+			gap: 0.5rem;
+			width: 100%;
+			flex-wrap: wrap; /* Permite que los elementos pasen a la siguiente línea */
+			/* Alineación eliminada para un ajuste más natural en pantallas estrechas */
+		}
+
+		.color-swatch {
+			width: 2.5rem;
+			height: 2.5rem;
+			border-radius: 50%;
+			cursor: pointer;
+			border: 2px solid transparent;
+			transition: border-color 0.2s ease, box-shadow 0.2s ease;
+		}
+
+		.color-swatch:hover {
+			border-color: #e5e7eb;
+		}
+
+		.color-swatch.active {
+			border-color: #06b6d4;
+			box-shadow: 0 0 0 2px #06b6d4;
+			transform: scale(1.1);
+		}
+
+		/* Media query para pantallas más grandes (ordenadores, tabletas) */
+		@media (min-width: 600px) {
+			.container {
+				margin: 2rem auto;
+			}
+
+			.buttons {
+				flex-direction: row; /* Vuelve a poner los botones en fila en pantallas grandes */
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Editor de Lienzo</h1>
+
+		<div class="form-group">
+			<label for="tileSize">Tamaño del Tile</label>
+			<select id="tileSize" class="input">
+				<option value="8">8 px</option>
+				<option value="16" selected>16 px</option>
+				<option value="32">32 px</option>
+				<option value="64">64 px</option>
+			</select>
+		</div>
+
+		<div class="form-group">
+			<label for="canvasWidth">Ancho (tiles)</label>
+			<input type="number" id="canvasWidth" class="input" min="1" value="10" />
+		</div>
+
+		<div class="form-group">
+			<label for="canvasHeight">Alto (tiles)</label>
+			<input type="number" id="canvasHeight" class="input" min="1" value="10" />
+		</div>
+
+		<div class="form-group result">
+			<strong>Tamaño del lienzo:</strong>
+			<span id="canvasSizePx">160 × 160 px</span>
+		</div>
+		
+		<div class="form-group">
+			<label>Color del Lienzo</label>
+			<div id="canvasColorSelector" class="color-selector">
+				<button class="color-swatch" style="background-color: #ffffff;" data-color="#ffffff"></button>
+				<button class="color-swatch" style="background-color: #000000;" data-color="#000000"></button>
+				<button class="color-swatch active" style="background-color: #999999;" data-color="#999999"></button>
+				<button class="color-swatch" style="background-color: #ef4444;" data-color="#ef4444"></button>
+				<button class="color-swatch" style="background-color: #3b82f6;" data-color="#3b82f6"></button>
+				<button class="color-swatch" style="background-color: #10b981;" data-color="#10b981"></button>
+				<button class="color-swatch" style="background-color: #eab308;" data-color="#eab308"></button>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label>Color de la Grilla</label>
+			<div id="gridColorSelector" class="color-selector">
+				<button class="color-swatch active" style="background-color: #ffffff;" data-color="#ffffff"></button>
+				<button class="color-swatch" style="background-color: #000000;" data-color="#000000"></button>
+				<button class="color-swatch" style="background-color: #999999;" data-color="#999999"></button>
+				<button class="color-swatch" style="background-color: #ef4444;" data-color="#ef4444"></button>
+				<button class="color-swatch" style="background-color: #3b82f6;" data-color="#3b82f6"></button>
+				<button class="color-swatch" style="background-color: #10b981;" data-color="#10b981"></button>
+				<button class="color-swatch" style="background-color: #eab308;" data-color="#eab308"></button>
+			</div>
+		</div>
+
+		<div class="buttons">
+			<button class="button primary" id="createButton">Crear</button>
+			<button class="button secondary">Cancelar</button>
+		</div>
+	</div>
+
+	<script>
+		// Selectores para los elementos de UI
+		const tileSize = document.getElementById('tileSize');
+		const widthInput = document.getElementById('canvasWidth');
+		const heightInput = document.getElementById('canvasHeight');
+		const sizePxDisplay = document.getElementById('canvasSizePx');
+		const canvasColorSwatches = document.querySelectorAll('#canvasColorSelector .color-swatch');
+		const gridColorSwatches = document.querySelectorAll('#gridColorSelector .color-swatch');
+		const createButton = document.getElementById('createButton');
+
+		// Función para actualizar la visualización del tamaño del lienzo en píxeles
+		function updateCanvasSize() {
+			const tile = parseInt(tileSize.value, 10);
+			const w = parseInt(widthInput.value, 10);
+			const h = parseInt(heightInput.value, 10);
+			const pxW = tile * w;
+			const pxH = tile * h;
+			sizePxDisplay.textContent = `${pxW} × ${pxH} px`;
+		}
+
+		// Función genérica para manejar la selección de colores
+		function handleColorSelection(swatches) {
+			swatches.forEach(swatch => {
+				swatch.addEventListener('click', () => {
+					swatches.forEach(s => s.classList.remove('active'));
+					swatch.classList.add('active');
+					const selectedColor = swatch.dataset.color;
+					// No es necesario loggear, el color se leerá al guardar
+				});
+			});
+		}
+
+		// Función para guardar la configuración en localStorage
+		function saveData() {
+			const appSettings = {
+				tileSize: tileSize.value,
+				canvasWidth: widthInput.value,
+				canvasHeight: heightInput.value,
+				canvasColor: document.querySelector('#canvasColorSelector .color-swatch.active').dataset.color,
+				gridColor: document.querySelector('#gridColorSelector .color-swatch.active').dataset.color
+			};
+			
+			localStorage.setItem('appSettings', JSON.stringify(appSettings));
+			console.log('Configuración guardada:', appSettings);
+		}
+
+		// Función para cargar la configuración desde localStorage al inicio
+		function loadData() {
+			const savedSettings = localStorage.getItem('appSettings');
+			if (savedSettings) {
+				const appSettings = JSON.parse(savedSettings);
+
+				tileSize.value = appSettings.tileSize;
+				widthInput.value = appSettings.canvasWidth;
+				heightInput.value = appSettings.canvasHeight;
+				
+				// Aplicar el color de lienzo guardado
+				canvasColorSwatches.forEach(swatch => {
+					swatch.classList.remove('active');
+					if (swatch.dataset.color === appSettings.canvasColor) {
+						swatch.classList.add('active');
+					}
+				});
+				
+				// Aplicar el color de grilla guardado
+				gridColorSwatches.forEach(swatch => {
+					swatch.classList.remove('active');
+					if (swatch.dataset.color === appSettings.gridColor) {
+						swatch.classList.add('active');
+					}
+				});
+				
+				console.log('Configuración cargada:', appSettings);
+			} else {
+				// Establecer el estado activo por defecto si no hay configuración guardada
+				const defaultCanvasColorSwatch = document.querySelector('#canvasColorSelector button[data-color="#999999"]');
+				if (defaultCanvasColorSwatch) {
+					defaultCanvasColorSwatch.classList.add('active');
+				}
+				const defaultGridColorSwatch = document.querySelector('#gridColorSelector button[data-color="#ffffff"]');
+				if (defaultGridColorSwatch) {
+					defaultGridColorSwatch.classList.add('active');
+				}
+			}
+			
+			updateCanvasSize();
+		}
+
+		// Llamamos a la función genérica para cada grupo de selectores
+		handleColorSelection(canvasColorSwatches);
+		handleColorSelection(gridColorSwatches);
+
+		// Escuchadores de eventos
+		tileSize.addEventListener('change', updateCanvasSize);
+		widthInput.addEventListener('input', updateCanvasSize);
+		heightInput.addEventListener('input', updateCanvasSize);
+
+		// Escuchador de eventos para el botón 'Crear'
+		createButton.addEventListener('click', () => {
+			saveData();
+			window.location.href = '../editor.html';
+		});
+
+		// Ejecutar al cargar la página
+		window.addEventListener('DOMContentLoaded', loadData);
+	</script>
+</body>
+</html>

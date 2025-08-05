@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doom 3D Style Raycasting</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Dimensiones del mapa
+        const MAP_WIDTH = 10;
+        const MAP_HEIGHT = 10;
+        const TILE_SIZE = 64;
+
+        // Mapa 2D (0 es espacio vacío, 1 es muro)
+        const map = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
+            [1, 0, 1, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 1, 0, 1, 1, 1, 0, 1, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 1, 0, 1, 0, 0, 1, 1],
+            [1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+
+        // Ajustar tamaño del canvas
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Jugador
+        const player = {
+            x: 3 * TILE_SIZE, // Posición inicial en el mapa
+            y: 3 * TILE_SIZE,
+            angle: Math.PI / 4, // Dirección hacia la que mira (45 grados)
+            fov: Math.PI / 3, // Campo de visión
+            speed: 2
+        };
+
+        // Función para realizar el raycasting
+        function castRay(angle) {
+            let distance = 0;
+            let hit = false;
+
+            // Probar en pasos pequeños
+            while (!hit && distance < 1000) {
+                distance += 0.1;
+
+                // Calcular las posiciones
+                const rayX = player.x + Math.cos(angle) * distance;
+                const rayY = player.y + Math.sin(angle) * distance;
+
+                // Verificar si el rayo ha chocado con un muro
+                const mapX = Math.floor(rayX / TILE_SIZE);
+                const mapY = Math.floor(rayY / TILE_SIZE);
+
+                if (map[mapY] && map[mapY][mapX] === 1) {
+                    hit = true;
+                }
+            }
+            return distance;
+        }
+
+        // Función para renderizar el mapa 3D
+        function render3D() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const numRays = canvas.width;
+            const wallHeight = 100; // altura base de las paredes (ajustable)
+
+            for (let ray = 0; ray < numRays; ray++) {
+                // Ángulo para cada rayo
+                const rayAngle = player.angle - player.fov / 2 + (ray / numRays) * player.fov;
+                
+                // Lanzar el rayo
+                const distance = castRay(rayAngle);
+
+                // Altura de la pared vista desde la cámara
+                const wallHeightScaled = (wallHeight * TILE_SIZE) / distance;
+
+                // Color de la pared (puedes usar más colores o texturas aquí)
+                const color = `rgb(${(distance * 2) % 255}, 100, 255)`;
+
+                // Dibujar la pared en el canvas
+                ctx.fillStyle = color;
+                ctx.fillRect(ray, (canvas.height - wallHeightScaled) / 2, 1, wallHeightScaled);
+            }
+        }
+
+        // Función de movimiento del jugador
+        function movePlayer() {
+            if (keys["ArrowUp"]) {
+                player.x += Math.cos(player.angle) * player.speed;
+                player.y += Math.sin(player.angle) * player.speed;
+            }
+            if (keys["ArrowDown"]) {
+                player.x -= Math.cos(player.angle) * player.speed;
+                player.y -= Math.sin(player.angle) * player.speed;
+            }
+            if (keys["ArrowLeft"]) {
+                player.angle -= 0.05;
+            }
+            if (keys["ArrowRight"]) {
+                player.angle += 0.05;
+            }
+        }
+
+        // Controlador de teclas
+        const keys = {};
+        window.addEventListener("keydown", (e) => keys[e.key] = true);
+        window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+        // Bucle de juego
+        function gameLoop() {
+            movePlayer();
+            render3D();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
